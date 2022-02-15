@@ -32,6 +32,18 @@ ORDER BY times_purchased DESC
 LIMIt 1;
 
 -- Which item was the most popular for each customer?
+WITH purchase_freq As (
+	SELECT s.customer_id, m.product_name, COUNT(m.product_name) as times_purchased,
+	RANK() OVER(PARTITION BY s.customer_id ORDER BY COUNT(m.product_name) DESC) as purchase_freq_rank
+	FROM sales as s
+	INNER JOIN menu as m
+	ON s.product_id = m.product_id
+	GROUP BY s.customer_id, m.product_name
+    )
+SELECT customer_id, product_name, times_purchased
+FROM purchase_freq
+WHERE purchase_freq_rank = 1;
+
 -- Which item was purchased first by the customer after they became a member?
 -- Which item was purchased just before the customer became a member?
 -- What is the total items and amount spent for each member before they became a member?
