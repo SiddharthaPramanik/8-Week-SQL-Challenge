@@ -45,7 +45,58 @@ FROM purchase_freq
 WHERE purchase_freq_rank = 1;
 
 -- Which item was purchased first by the customer after they became a member?
+SELECT customer_id, product_name
+FROM 
+(
+	SELECT s.customer_id, me.product_name,
+	RANK() OVER(PARTITION BY s.customer_id ORDER BY s.order_date) as order_no
+	FROM sales as s 
+	INNER JOIN members as mb 
+	ON s.customer_id = mb.customer_id
+	INNER JOIN menu as me
+	ON s.product_id = me.product_id
+	WHERE s.order_date >= mb.join_date
+    ) as relevant_data
+WHERE order_no = 1;
+
 -- Which item was purchased just before the customer became a member?
+SELECT customer_id, product_name
+FROM 
+(
+	SELECT s.customer_id, me.product_name,
+	RANk() OVER(PARTITION BY s.customer_id ORDER BY s.order_date DESC) as order_no
+	FROM sales as s 
+	INNER JOIN members as mb 
+	ON s.customer_id = mb.customer_id
+	INNER JOIN menu as me
+	ON s.product_id = me.product_id
+	WHERE s.order_date < mb.join_date
+    ) as relevant_data
+WHERE order_no = 1;
+
 -- What is the total items and amount spent for each member before they became a member?
+SELECT s.customer_id, COUNT(me.product_name) as number_of_items, SUM(me.price) as amount
+FROM sales as s 
+INNER JOIN members as mb 
+ON s.customer_id = mb.customer_id
+INNER JOIN menu as me
+ON s.product_id = me.product_id
+WHERE s.order_date < mb.join_date
+GROUP BY s.customer_id
+ORDER BY s.customer_id;
+
 -- If each $1 spent equates to 10 points and sushi has a 2x points multiplier - how many points would each customer have?
+SELECT s.customer_id, SUM(p.point) as points
+FROM sales as s
+INNER JOIN (
+	SELECT me.product_id,
+    CASE
+    WHEN me.product_id = 1 THEN me.price * 20
+    ELSE me.price * 10
+    END as point
+    FROM menu as me
+) as p
+ON s.product_id = p.product_id
+GROUP BY s.customer_id;
+
 -- In the first week after a customer joins the program (including their join date) they earn 2x points on all items, not just sushi - how many points do customer A and B have at the end of January?
