@@ -99,4 +99,59 @@ INNER JOIN (
 ON s.product_id = p.product_id
 GROUP BY s.customer_id;
 
--- In the first week after a customer joins the program (including their join date) they earn 2x points on all items, not just sushi - how many points do customer A and B have at the end of January?
+-- In the first week after a customer joins the program (including their join date) they earn 2x points on all items, 
+-- not just sushi - how many points do customer A and B have at the end of January?
+SELECT s.customer_id, SUM(
+	CASE
+		WHEN s.order_date >= mb.join_date
+		AND s.order_date < ADDDATE(mb.join_date, INTERVAL 7 DAY )
+		THEN me.price * 20
+		ELSE
+			CASE
+				WHEN me.product_id = 1 THEN me.price * 20
+				ELSE me.price * 10
+			END
+	END
+) as new_points
+FROM sales as s
+LEFT JOIN members as mb
+ON s.customer_id = mb.customer_id
+INNER JOIN menu as me
+on me.product_id = s.product_id
+GROUP BY s.customer_id;
+
+-- BONUS QUESTIONS
+
+-- Join All The Things
+SELECT s.customer_id, s.order_date, me.product_name, me.price,
+CASE
+	WHEN s.order_date >= mb.join_date THEN 'Y'
+    ELSE 'N'
+END as member
+FROM sales as s
+LEFT JOIN members as mb
+ON s.customer_id = mb.customer_id
+INNER JOIN menu as me
+on s.product_id = me.product_id;
+
+-- Rank All The Things
+
+WITH dataset as (
+	SELECT s.customer_id, s.order_date, me.product_name, me.price,
+	CASE
+		WHEN s.order_date >= mb.join_date THEN 'Y'
+		ELSE 'N'
+	END as member
+	FROM sales as s
+	LEFT JOIN members as mb
+	ON s.customer_id = mb.customer_id
+	INNER JOIN menu as me
+	on s.product_id = me.product_id
+)
+SELECT *,
+CASE
+	WHEN member='Y' THEN RANK() OVER(
+					PARTITION BY customer_id, member ORDER BY order_date
+                    )
+END as ranking
+FROM dataset;
